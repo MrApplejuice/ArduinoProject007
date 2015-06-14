@@ -117,8 +117,9 @@ midifile = sys.argv[1]
 
 conv = midiToArduinoConverter(midifile)
 notes = conv.convert()
-outputfile = os.path.splitext(midifile)[0] + ".json"
-write_to_file(json.dumps(notes),outputfile)
+outputfile = os.path.splitext(midifile)[0] + ".nsq"
+with open(outputfile, "wb") as f:
+    f.write("\n".join(map(lambda x: ",".join([str(int(round(float(i)))) for i in x]), notes)))
 mylog("Wrote notes to {}".format(outputfile))
 
 
