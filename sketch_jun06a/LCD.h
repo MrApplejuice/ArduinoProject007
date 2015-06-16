@@ -1,29 +1,31 @@
 #ifndef LCD_H_
 #define LCD_H_
 
+#include <Arduino.h>
+
 #include <stdint.h>
 
 class LCDDisplay {
   public:
     // Static properties of the display
-    const static unsigned int ROW_COUNT = 8;
-    const static unsigned int IC_ROW_WIDTH = 64;
+    const PROGMEM static unsigned int ROW_COUNT = 8;
+    const PROGMEM static unsigned int IC_ROW_WIDTH = 64;
     
-    const static unsigned int DISPLAY_WIDTH = 2 * IC_ROW_WIDTH;
-    const static unsigned int DISPLAY_HEIGHT = ROW_COUNT * 8;
+    const PROGMEM static unsigned int DISPLAY_WIDTH = 2 * IC_ROW_WIDTH;
+    const PROGMEM static unsigned int DISPLAY_HEIGHT = ROW_COUNT * 8;
   private:
     // Connection pins of the display
-    const static int RESET_PIN = 22;
+    const PROGMEM static int RESET_PIN = 22;
     
-    const static int CHIP1_SELECT_PIN = 24;
-    const static int CHIP2_SELECT_PIN = 25;
+    const PROGMEM static int CHIP1_SELECT_PIN = 24;
+    const PROGMEM static int CHIP2_SELECT_PIN = 25;
     
-    const static int COMMAND_MEM_SWITCH_PIN = 26; // LOW = command, HIGH = memory
-    const static int WRITE_READ_SWITCH_PIN = 27;  // LOW = write,   HIGH = read
-    const static int ACTIVATE_COMMAND_PIN = 23;   // HIGH->LOW flank executes command, HIGH is the resting level
+    const PROGMEM static int COMMAND_MEM_SWITCH_PIN = 26; // LOW = command, HIGH = memory
+    const PROGMEM static int WRITE_READ_SWITCH_PIN = 27;  // LOW = write,   HIGH = read
+    const PROGMEM static int ACTIVATE_COMMAND_PIN = 23;   // HIGH->LOW flank executes command, HIGH is the resting level
     
-    const static int BUS_START_PIN = 28;
-    const static int BUS_END_PIN = 35;
+    const PROGMEM static int BUS_START_PIN = 28;
+    const PROGMEM static int BUS_END_PIN = 35;
 
     struct State {
       bool displayOn;

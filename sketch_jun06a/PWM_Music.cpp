@@ -1,17 +1,23 @@
+// somehow this cannot include the required TimerThree library. disabling build of this lib for now
+#define EXCLUDE
+
+#ifdef EXCLUDE
+#undef EXCLUDE
+#else
+
 #include "PWM_Music.h"
 
 #include <stdint.h>
 #include <string.h>
 
 #include <Arduino.h>
+#include <TimerThree.h>
 
 #include <SD.h>
 
-#include <TimerThree.h>
+static PROGMEM const uint8_t MUSIC_PWM_DIVISORS[128] = {0xff, 127, 84, 63, 50, 42, 36, 31, 27, 25, 22, 20, 19, 17, 16, 15, 14, 13, 12, 12, 11, 11, 10, 10, 9, 9, 8, 8, 8, 8, 7, 7, 7, 7, 6, 6, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
-static const uint8_t MUSIC_PWM_DIVISORS[128] = {0xff, 127, 84, 63, 50, 42, 36, 31, 27, 25, 22, 20, 19, 17, 16, 15, 14, 13, 12, 12, 11, 11, 10, 10, 9, 9, 8, 8, 8, 8, 7, 7, 7, 7, 6, 6, 6, 6, 6, 5, 5, 5, 5, 5, 5, 5, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-
-static int MUSIC_PIN = 0;
+static uint8_t MUSIC_PIN = 0;
 
 void setMusicSoundPin(int i) {
   MUSIC_PIN = i;
@@ -76,4 +82,6 @@ bool playMusic(const char* filename) {
   
   musicFile.close();
 }
+
+#endif // EXCLUDE
 
