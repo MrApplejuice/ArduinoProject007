@@ -19,45 +19,45 @@ LCDDisplay* lcd_display;
 
 class StreamLineReader {
   private:
-    const PROGMEM static size_t BUFFER_SIZE = 16;
+    const PROGMEM static size_t BUFFER_SIZE = 64;
   
-    bool streamValid;
     Stream* stream;
  
     char buffer[BUFFER_SIZE];
     uint8_t readBufferFillState, lastLineLength;
   public:
     const char* readLine() {
-      if (lastLineLength > 0) {
-        // Shift buffer contents to the beginning
-        for (int i = 0; i < readBufferFillState - lastLineLength; i++) {
-          //buffer[i] = buffer[i + lastLineLength];
+      if (stream) {
+        if (lastLineLength > 0) {
+          // Shift buffer contents to the beginning
+          for (int i = 0; i < readBufferFillState - lastLineLength; i++) {
+            buffer[i] = buffer[i + lastLineLength];
+          }
+          readBufferFillState -= lastLineLength;
         }
-        readBufferFillState -= lastLineLength;
-      }
-    
-      if (readBufferFillState < BUFFER_SIZE) {
-        readBufferFillState = BUFFER_SIZE;
-        //readBufferFillState += stream->readBytes(buffer + readBufferFillState, BUFFER_SIZE - readBufferFillState);
-      }
       
-      // Try to extract a next line (terminate full buffer with \0 if no \n can be found and return that - limits the line length to the BUFFER_SIZE - 1)
-/*        if (readBufferFillState > 0) {
-        int _end = 0;
-        while ((_end < readBufferFillState - 1) && (buffer[_end] != '\n')) {
-          _end++;
+        if (readBufferFillState < BUFFER_SIZE) {
+          readBufferFillState += stream->readBytes(buffer + readBufferFillState, BUFFER_SIZE - readBufferFillState);
         }
-        _end = 1;
-        buffer[_end] = '\0';
-        lastLineLength = _end + 1;
-        return buffer;
-      } else {
-        return NULL; // Everything has been read
-      }*/
+        
+        // Try to extract a next line (terminate full buffer with \0 if no \n can be found and return that - limits the line length to the BUFFER_SIZE - 1)
+        if (readBufferFillState > 0) {
+          int _end = 0;
+          while ((_end < readBufferFillState - 1) && (buffer[_end] != '\n')) {
+            _end++;
+          }
+          buffer[_end] = '\0';
+          lastLineLength = _end + 1;
+          return buffer;
+        } else {
+          return NULL; // Everything has been read
+        }
+      }
       return NULL;
     }
   
-    StreamLineReader(Stream& stream) : streamValid(true), stream(&stream), readBufferFillState(0), lastLineLength(0) {}
+    StreamLineReader() : stream(NULL) {}
+    StreamLineReader(Stream& stream) : stream(&stream), readBufferFillState(0), lastLineLength(0) {}
 };
 
 class BackgroundMusicPlayer {
@@ -66,23 +66,28 @@ class BackgroundMusicPlayer {
       int frequency, duration; 
     };
   
-    static PROGMEM const int MAX_SAMPLES = 4;
+    static PROGMEM const int MAX_SAMPLES = 32;
   
     bool preventPlaying;
   
     int nextAction;
-    uint8_t pinNumber;
+    uint8_t pin;
   
     uint8_t sampleCount, playbackCursor;
     MusicSample samples[MAX_SAMPLES];
     
+    File openFile;
+    StreamLineReader lineReader;
+    
     static BackgroundMusicPlayer* singleton;
+    
+    void loadNext() {
+    }
     
     void internalIC() {
       if (millis() >= nextAction) {
-        return;
         if (playbackCursor < sampleCount) {
-          //tone(musicPin, samples[playbackCursor].frequency, samples[playbackCursor].duration);
+          tone(pin, samples[playbackCursor].frequency, samples[playbackCursor].duration);
           nextAction = millis() + samples[playbackCursor].duration;
           playbackCursor++;
         }
@@ -95,49 +100,53 @@ class BackgroundMusicPlayer {
       }
     }
 
-    BackgroundMusicPlayer(int pin) : preventPlaying(false), pinNumber(pin), sampleCount(0), playbackCursor(0) {
-      //Timer1.initialize(1000000);
-      //Timer1.attachInterrupt(&interruptCallback);
-      
-      //pinMode(musicPin, OUTPUT);
+    BackgroundMusicPlayer(uint8_t pin) : preventPlaying(false), pin(pin), sampleCount(0), playbackCursor(0) {
+      pinMode(pin, OUTPUT);
+
+      Timer1.initialize(100);
+      Timer1.attachInterrupt(&interruptCallback);
     }
   public:
     void playSingleToneMusic(const char* filename) {
       preventPlaying = true;
       
       {
-        File openFile;
-        {
-          char* localFilename = new char[64];
-          strncpy(localFilename, filename, 63);
-          openFile = SD.open(localFilename);
-          delete[] localFilename;
-        }
-        //StreamLineReader reader(openFile);
+        openFile.close();
+        lineReader = StreamLineReader();
         
         sampleCount = 0;
         playbackCursor = 0;
-        if (openFile) {
-          /*while ((sampleCount < MAX_SAMPLES) && openFile.available()) {
-            const char* line = reader.readLine();
-            if (line == NULL) {
-              break;
-            }
-            if (strlen(line) == 0) {
-              continue;
-            }
-//            Serial.println(line);
-            
-            //int freq, duration;
-            //sscanf(line.c_str(), "%d,%d", &freq, &duration);
-            
-            //samples[sampleCount].frequency = freq;
-            //samples[sampleCount].duration = duration * 10;
-            
-            sampleCount++;
-          }*/
+        
+        {
+          char localFilename[64];
+          strncpy(localFilename, filename, 63);
+          openFile = SD.open(localFilename);
         }
-        openFile.close();
+        if (!openFile) {
+          Serial.println("Cannot open music file");
+        } else {
+          lineReader = StreamLineReader(openFile);
+          
+          if (openFile) {
+            while ((sampleCount < MAX_SAMPLES) && openFile.available()) {
+              const char* line = lineReader.readLine();
+              if (line == NULL) {
+                break;
+              }
+              if (strlen(line) == 0) {
+                continue;
+              }
+              
+              int freq, duration;
+              sscanf(line, "%d,%d", &freq, &duration);
+              
+              samples[sampleCount].frequency = freq;
+              samples[sampleCount].duration = duration * 8;
+              
+              sampleCount++;
+            }
+          }
+        }
       }
 
       nextAction = millis();
@@ -149,6 +158,7 @@ class BackgroundMusicPlayer {
       if (singleton == NULL) {
         singleton = new BackgroundMusicPlayer(pin);
       }
+      return singleton;
     }
 };
 BackgroundMusicPlayer* BackgroundMusicPlayer::singleton = NULL;
@@ -158,7 +168,6 @@ BackgroundMusicPlayer* BackgroundMusicPlayer::singleton = NULL;
 void backgroundPlaySingleToneMusic(const char* filename) {
 }
 
-const PROGMEM char UNEXEPECTED_EOF_MESSAGE[] = "Unexpected end of (image) file";
 bool displayImage(const char* filename) {
   // Arduino library designers do not know const correctness :-(
   char localFilename[64];
@@ -175,7 +184,7 @@ bool displayImage(const char* filename) {
     for (int row = 0; row < LCDDisplay::ROW_COUNT; row++) {
       const int bytesRead = file.readBytes(rowData, LCDDisplay::DISPLAY_WIDTH);
       if (bytesRead < LCDDisplay::DISPLAY_WIDTH) {
-        Serial.println(UNEXEPECTED_EOF_MESSAGE);
+        Serial.println(F("Unexpected end of (image) file"));
         break;
       }
       lcd_display->writeRow(row, 0, LCDDisplay::DISPLAY_WIDTH, rowData);
@@ -186,6 +195,11 @@ bool displayImage(const char* filename) {
   return true;
 }
 
+bool displayImage(const __FlashStringHelper* str) {
+  String s(str);
+  return displayImage(s.c_str());
+}
+
 void setup() {
   // Debug output initialization
   Serial.begin(9600);
@@ -193,26 +207,16 @@ void setup() {
   // SD card initialization
   SD.begin(SPI_PIN);
   
-  Serial.println(sizeof(BackgroundMusicPlayer));
-  Serial.println(sizeof(LCDDisplay));
-  
-  /*
   lcd_display = new LCDDisplay;
   
   lcd_display->cls();
   lcd_display->activateDisplay(true);
   
-  displayImage("images/img_1.bim");
-  */
+  displayImage(F("images/img_1.bim"));
   
-  tone(DIGITAL_SOUND_PIN, 400, 400);
-  delay(400);
-  BackgroundMusicPlayer::instance(DIGITAL_SOUND_PIN)->playSingleToneMusic(PSTR("music/test1.nsq"));
-  tone(DIGITAL_SOUND_PIN, 400, 400);  
-  delay(400);
+  BackgroundMusicPlayer::instance(DIGITAL_SOUND_PIN)->playSingleToneMusic("music/bsno1.nsq");
 
   //delay(1000);
-  Serial.println("After delay");
 
   //int freq = 400;
 
