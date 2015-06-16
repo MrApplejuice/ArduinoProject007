@@ -7,8 +7,6 @@
 
 #include <TimerOne.h>
 
-#include "Tone.h"
-
 const PROGMEM uint8_t DIGITAL_SOUND_PIN = 2;
 
 const PROGMEM uint8_t SPI_PIN = 4; // Required for sd card connection!!!
@@ -19,7 +17,7 @@ LCDDisplay* lcd_display;
 
 class StreamLineReader {
   private:
-    const PROGMEM static size_t BUFFER_SIZE = 64;
+    const PROGMEM static size_t BUFFER_SIZE = 32;
   
     Stream* stream;
  
@@ -37,7 +35,9 @@ class StreamLineReader {
         }
       
         if (readBufferFillState < BUFFER_SIZE) {
-          readBufferFillState += stream->readBytes(buffer + readBufferFillState, BUFFER_SIZE - readBufferFillState);
+          if (stream->available()) {
+            readBufferFillState += stream->readBytes(buffer + readBufferFillState, BUFFER_SIZE - readBufferFillState);
+          }
         }
         
         // Try to extract a next line (terminate full buffer with \0 if no \n can be found and return that - limits the line length to the BUFFER_SIZE - 1)
@@ -48,6 +48,7 @@ class StreamLineReader {
           }
           buffer[_end] = '\0';
           lastLineLength = _end + 1;
+          
           return buffer;
         } else {
           return NULL; // Everything has been read
@@ -66,11 +67,11 @@ class BackgroundMusicPlayer {
       int frequency, duration; 
     };
   
-    static PROGMEM const int MAX_SAMPLES = 32;
+    static PROGMEM const int MAX_SAMPLES = 2;
   
     bool preventPlaying;
   
-    int nextAction;
+    unsigned long nextAction;
     uint8_t pin;
   
     uint8_t sampleCount, playbackCursor;
@@ -81,14 +82,40 @@ class BackgroundMusicPlayer {
     
     static BackgroundMusicPlayer* singleton;
     
-    void loadNext() {
+    void fillBuffer() {
+      preventPlaying = true;
+      if (openFile) {
+        sampleCount = 0;
+        playbackCursor = 0;
+        while (sampleCount < MAX_SAMPLES) {
+          const char* line = lineReader.readLine();
+          if (line == NULL) {
+            openFile.close();
+            break;
+          }
+          if (strlen(line) == 0) {
+            continue;
+          }
+          
+          int freq, duration;
+          sscanf(line, "%d,%d", &freq, &duration);
+          
+          samples[sampleCount].frequency = freq;
+          samples[sampleCount].duration = duration * 8;
+          
+          sampleCount++;
+        }
+      }
+      preventPlaying = false;
     }
     
     void internalIC() {
       if (millis() >= nextAction) {
         if (playbackCursor < sampleCount) {
           tone(pin, samples[playbackCursor].frequency, samples[playbackCursor].duration);
-          nextAction = millis() + samples[playbackCursor].duration;
+          noteCounter++;
+          
+          nextAction = millis() + static_cast<unsigned long>(samples[playbackCursor].duration);
           playbackCursor++;
         }
       }
@@ -100,13 +127,21 @@ class BackgroundMusicPlayer {
       }
     }
 
-    BackgroundMusicPlayer(uint8_t pin) : preventPlaying(false), pin(pin), sampleCount(0), playbackCursor(0) {
+    BackgroundMusicPlayer(uint8_t pin) : preventPlaying(false), pin(pin), sampleCount(0), playbackCursor(0), noteCounter(0) {
       pinMode(pin, OUTPUT);
 
-      Timer1.initialize(100);
+      Timer1.initialize(1000);
       Timer1.attachInterrupt(&interruptCallback);
     }
   public:
+    int noteCounter;
+
+    void updateBuffer() {
+      if (playbackCursor >= sampleCount) {
+        fillBuffer();
+      }
+    }
+  
     void playSingleToneMusic(const char* filename) {
       preventPlaying = true;
       
@@ -126,26 +161,9 @@ class BackgroundMusicPlayer {
           Serial.println("Cannot open music file");
         } else {
           lineReader = StreamLineReader(openFile);
-          
-          if (openFile) {
-            while ((sampleCount < MAX_SAMPLES) && openFile.available()) {
-              const char* line = lineReader.readLine();
-              if (line == NULL) {
-                break;
-              }
-              if (strlen(line) == 0) {
-                continue;
-              }
-              
-              int freq, duration;
-              sscanf(line, "%d,%d", &freq, &duration);
-              
-              samples[sampleCount].frequency = freq;
-              samples[sampleCount].duration = duration * 8;
-              
-              sampleCount++;
-            }
-          }
+          fillBuffer();      
+          Serial.print("Loaded sample count ");
+          Serial.println(sampleCount);
         }
       }
 
@@ -164,9 +182,6 @@ class BackgroundMusicPlayer {
 BackgroundMusicPlayer* BackgroundMusicPlayer::singleton = NULL;
 
 
-
-void backgroundPlaySingleToneMusic(const char* filename) {
-}
 
 bool displayImage(const char* filename) {
   // Arduino library designers do not know const correctness :-(
@@ -214,7 +229,7 @@ void setup() {
   
   displayImage(F("images/img_1.bim"));
   
-  BackgroundMusicPlayer::instance(DIGITAL_SOUND_PIN)->playSingleToneMusic("music/bsno1.nsq");
+  BackgroundMusicPlayer::instance(DIGITAL_SOUND_PIN)->playSingleToneMusic("music/gstq.nsq");
 
   //delay(1000);
 
@@ -223,5 +238,13 @@ void setup() {
   //displayImage("images/img_30.bim");
 }
 
+int last = -1;
 void loop() {
+  BackgroundMusicPlayer::instance(DIGITAL_SOUND_PIN)->updateBuffer();
+  int _new = BackgroundMusicPlayer::instance(DIGITAL_SOUND_PIN)->noteCounter;
+  if (_new != last) {
+    last = _new;
+    Serial.println(_new);
+  }
+  delay(1);
 }
