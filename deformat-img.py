@@ -37,4 +37,7 @@ for row in xrange(img.shape[0] / 8):
       #print hex(b), (b and (1 << i)) != 0
       img[row * 8 + i, x] = 0 if (b & (1 << i)) != 0 else 0xFF
       
+# Display was mounted upside down, rotate images by 180 degreees
+img = np.fliplr(np.flipud(img))
+
 sm.imsave(sys.argv[2], img)

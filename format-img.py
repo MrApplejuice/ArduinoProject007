@@ -21,6 +21,9 @@ if img.shape[1] == 64:
 # Make a binary image out of the grayscale image  
 img = img < 128 # Note that black pixels must be set to become black on the LCD!
 
+# Display was mounted upside down, rotate images by 180 degreees
+img = np.fliplr(np.flipud(img))
+
 # Start output
 with open(sys.argv[2], "wb") as f:
   # Segment image into rows of 8 pixels
