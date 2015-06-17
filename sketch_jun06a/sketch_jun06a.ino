@@ -2,21 +2,23 @@
 
 #include "LCD.h"
 
-// Must list ALL used libs here - magic of the arduino software is being worked based on this
+// Must list ALL used libs here - magic of the arduino software is based on this
 #include <SPI.h>
 #include <SD.h>
 #include <TimerOne.h>
 
 #include "SingleTonePlayback.h"
+#include "Numpad.h"
 
 const PROGMEM uint8_t DIGITAL_SOUND_PIN = 2;
 
 const PROGMEM uint8_t SPI_PIN = 4; // Required for sd card connection!!!
 
-const PROGMEM int BACKGROUND_MUSIC_TIMER_PIN = 2;
+const PROGMEM uint8_t NUMPAD_START_PIN = 38;
+
 
 LCDDisplay* lcd_display;
-
+Numpad* numpad;
 
 bool displayImage(const char* filename) {
   // Arduino library designers do not know const correctness :-(
@@ -51,13 +53,16 @@ bool displayImage(const __FlashStringHelper* str) {
 }
 
 void setup() {
+  lcd_display = new LCDDisplay;
+  lcd_display->activateDisplay(false);
+
   // Debug output initialization
   Serial.begin(9600);
 
   // SD card initialization
   SD.begin(SPI_PIN);
   
-  lcd_display = new LCDDisplay;
+  numpad = new Numpad(NUMPAD_START_PIN);
   
   lcd_display->cls();
   lcd_display->activateDisplay(true);
@@ -73,13 +78,7 @@ void setup() {
   //displayImage("images/img_30.bim");
 }
 
-int last = -1;
 void loop() {
   BackgroundMusicPlayer::instance(DIGITAL_SOUND_PIN)->updateBuffer();
-  int _new = BackgroundMusicPlayer::instance(DIGITAL_SOUND_PIN)->noteCounter;
-  if (_new != last) {
-    last = _new;
-    Serial.println(_new);
-  }
   delay(1);
 }
