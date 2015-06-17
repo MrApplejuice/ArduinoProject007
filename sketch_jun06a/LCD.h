@@ -106,6 +106,13 @@ class LCDDisplay {
     //   count   -> number of bytes to write, automatically clamped to the width of the screen
     void writeRow(unsigned int row, unsigned int xoffset, unsigned int count, uint8_t* data);
     
+    // fills a display row (or part of it) with a constant value
+    // Parameters:
+    //   row     ->  0 <= row < ROW_COUNT; selects the row that should be written
+    //   xoffset ->  x coordinate to begin writing from.
+    //   count   -> number of bytes to write, automatically clamped to the width of the screen
+    void fillRow(unsigned int row, unsigned int xoffset, unsigned int count, uint8_t value);
+    
     // Very high level functions allowing to do stuff with the whole screen
     
     // Outputs an image to the LCD display

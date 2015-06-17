@@ -83,7 +83,6 @@ void BackgroundMusicPlayer :: playSingleToneMusic(const char* filename) {
     } else {
       lineReader = StreamLineReader(openFile);
       fillBuffer();      
-      Serial.print("Loaded sample count ");
       Serial.println(sampleCount);
     }
   }

@@ -24,8 +24,6 @@ const char* Numpad :: getPressed() {
 Numpad :: Numpad(uint8_t startpin) : startpin(startpin) {
   for (int i = startpin; i < startpin + KEY_COUNT; i++) {
     pinMode(i, INPUT_PULLUP);
-    Serial.print("sdas ");
-    Serial.println(i);
   }
 }
 

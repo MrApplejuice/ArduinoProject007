@@ -9,6 +9,7 @@
 
 #include "SingleTonePlayback.h"
 #include "Numpad.h"
+#include "ReversedCharset.h"
 
 const PROGMEM uint8_t DIGITAL_SOUND_PIN = 2;
 
@@ -19,6 +20,7 @@ const PROGMEM uint8_t NUMPAD_START_PIN = 38;
 
 LCDDisplay* lcd_display;
 Numpad* numpad;
+ReversedCharset* rCharset;
 
 bool displayImage(const char* filename) {
   // Arduino library designers do not know const correctness :-(
@@ -54,6 +56,8 @@ bool displayImage(const __FlashStringHelper* str) {
 
 void setup() {
   lcd_display = new LCDDisplay;
+  rCharset = new ReversedCharset(lcd_display);
+  
   lcd_display->activateDisplay(false);
 
   // Debug output initialization
@@ -67,7 +71,14 @@ void setup() {
   lcd_display->cls();
   lcd_display->activateDisplay(true);
   
-  displayImage(F("images/img_1.bim"));
+  //displayImage(F("images/img_1.bim"));
+  rCharset->displayString(0, 1, "0123456789!\"\\/'#*", true);
+  rCharset->displayString(1, 1, "Das sieht aber super aus.", true);
+  rCharset->displayString(2, 1, "Ganz viel Platz", true);
+  rCharset->displayString(3, 1, "fuer Nachrichten", true);
+  rCharset->displayString(4, 1, "fuer Mr X... ", true);
+  rCharset->displayString(5, 1, "Super gemacht!! ", true);
+  rCharset->displayString(7, 1, ":-x :) Thumbs up!", true);
   
   BackgroundMusicPlayer::instance(DIGITAL_SOUND_PIN)->playSingleToneMusic(F("music/bsno1.nsq"));
 }

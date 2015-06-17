@@ -190,6 +190,26 @@ void LCDDisplay :: writeRow(unsigned int row, unsigned int xoffset, unsigned int
   }
 }
 
+void LCDDisplay :: fillRow(unsigned int row, unsigned int xoffset, unsigned int count, uint8_t value) {
+  if ((row >= ROW_COUNT) || (xoffset >= DISPLAY_WIDTH)) {
+    return; // Nothing to do
+  }
+  
+  if (xoffset + count > DISPLAY_WIDTH) {
+    count = DISPLAY_WIDTH - xoffset;
+  }
+  
+  setCursorPosition(row, xoffset);
+  for (int x = xoffset; x < xoffset + count; x++) {
+    if (x == IC_ROW_WIDTH) {
+      // Must select second chip now
+      setCursorPosition(row, x);
+    }
+    
+    writeToMemory(value);
+  }
+}
+
 void LCDDisplay :: writeImage(uint8_t* imgData) {
   for (int row = 0; row < ROW_COUNT; row++) {
     writeRow(row, 0, DISPLAY_WIDTH, imgData + row * DISPLAY_WIDTH);
