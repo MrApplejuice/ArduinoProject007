@@ -69,16 +69,13 @@ void setup() {
   
   displayImage(F("images/img_1.bim"));
   
-  BackgroundMusicPlayer::instance(DIGITAL_SOUND_PIN)->playSingleToneMusic("music/gstq.nsq");
-
-  //delay(1000);
-
-  //int freq = 400;
-
-  //displayImage("images/img_30.bim");
+  BackgroundMusicPlayer::instance(DIGITAL_SOUND_PIN)->playSingleToneMusic(F("music/bsno1.nsq"));
 }
 
 void loop() {
   BackgroundMusicPlayer::instance(DIGITAL_SOUND_PIN)->updateBuffer();
+  if (numpad->isPressed('0')) {
+    noTone(DIGITAL_SOUND_PIN);
+  }
   delay(1);
 }

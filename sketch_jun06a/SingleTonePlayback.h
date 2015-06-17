@@ -83,6 +83,7 @@ class BackgroundMusicPlayer {
     void updateBuffer();
   
     void playSingleToneMusic(const char* filename);
+    void playSingleToneMusic(const __FlashStringHelper* filename);
   
     static BackgroundMusicPlayer* instance(int pin);
 };

@@ -93,6 +93,11 @@ void BackgroundMusicPlayer :: playSingleToneMusic(const char* filename) {
   preventPlaying = false;
 }
 
+void BackgroundMusicPlayer :: playSingleToneMusic(const __FlashStringHelper* filename) {
+  String fn(filename);
+  playSingleToneMusic(fn.c_str());
+}
+
 BackgroundMusicPlayer* BackgroundMusicPlayer :: instance(int pin) {
   if (singleton == NULL) {
     singleton = new BackgroundMusicPlayer(pin);
