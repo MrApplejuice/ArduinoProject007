@@ -51,14 +51,16 @@ void BackgroundMusicPlayer :: interruptCallback() {
 BackgroundMusicPlayer :: BackgroundMusicPlayer(uint8_t pin) : preventPlaying(false), pin(pin), sampleCount(0), playbackCursor(0), noteCounter(0) {
   pinMode(pin, OUTPUT);
 
-  Timer1.initialize(1000);
-  Timer1.attachInterrupt(&interruptCallback);
+  // This does not quite work... will now be done completelty with cooperative multitasking and updateBuffer()
+  //Timer1.initialize(1000);
+  //Timer1.attachInterrupt(&interruptCallback);
 }
 
 void BackgroundMusicPlayer :: updateBuffer() {
   if (playbackCursor >= sampleCount) {
     fillBuffer();
   }
+  internalIC();
 }
   
 void BackgroundMusicPlayer :: playSingleToneMusic(const char* filename) {

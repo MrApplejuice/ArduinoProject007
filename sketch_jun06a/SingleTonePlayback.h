@@ -5,8 +5,6 @@
 
 #include <SD.h>
 
-#include <TimerOne.h>
-
 class StreamLineReader {
   private:
     const PROGMEM static size_t BUFFER_SIZE = 32;
@@ -59,7 +57,7 @@ class BackgroundMusicPlayer {
       int frequency, duration; 
     };
   
-    static PROGMEM const int MAX_SAMPLES = 2;
+    static PROGMEM const int MAX_SAMPLES = 4;
   
     bool preventPlaying;
   
