@@ -1,1 +1,6 @@
-diag-tools send -message "Many thanks for all your help" -receiver "Michael" 
+
+
+
+diag-tools send -message 
+"Many thanks for all your help"
+-receiver "Michael" 

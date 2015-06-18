@@ -73,7 +73,7 @@ class SlideShow : public Program {
   private:
     unsigned int lastKeyPress;
     
-    unsigned int lastImageOrTextTime;
+    unsigned long lastImageOrTextTime;
     
     int imageFiles;
     int textFiles;
@@ -128,6 +128,25 @@ class SlideShow : public Program {
     }
     
     void showText(int i) {
+      String filename = getNthFileName(String(F("/texts")), i);
+      Serial.print(F("Showing text number "));
+      Serial.print(i);
+      Serial.print(F(": "));
+      Serial.println(filename);
+      
+      File file = SD.open(filename);
+      StreamLineReader lineReader(file); // This one comes from SingleTonePlayback.h - quite dirty, but I got no time :-(
+      
+      lcd_display->cls();
+      for (int row = 0; row < LCDDisplay::ROW_COUNT; row++) {
+        const char* line = lineReader.readLine();
+        if (line == NULL) {
+          break;
+        }
+        rCharset->displayString(row, 0, line, true);
+      }
+      
+      file.close();
     }
     
     void showImage(int i) {
@@ -168,6 +187,7 @@ class SlideShow : public Program {
       randomSeed(millis());
       
       lastKeyPress = millis();
+      lcd_display->cls();
       
       Serial.println("Counting images");
       imageFiles = countFiles(String(F("/images")));
@@ -192,6 +212,9 @@ class SlideShow : public Program {
       
       if (millis() - lastImageOrTextTime > 60000) { // 1 min per image or text
         nextRandomImageOrText();
+        Serial.print(millis());
+        Serial.print("  ");
+        Serial.println(lastImageOrTextTime);
       }
       
       return this;

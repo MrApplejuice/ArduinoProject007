@@ -7,7 +7,7 @@
 
 class StreamLineReader {
   private:
-    const PROGMEM static size_t BUFFER_SIZE = 32;
+    const PROGMEM static size_t BUFFER_SIZE = 48;
   
     Stream* stream;
  
