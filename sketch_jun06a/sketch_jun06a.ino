@@ -12,15 +12,14 @@
 #include "ReversedCharset.h"
 
 const PROGMEM uint8_t DIGITAL_SOUND_PIN = 2;
-
 const PROGMEM uint8_t SPI_PIN = 4; // Required for sd card connection!!!
-
 const PROGMEM uint8_t NUMPAD_START_PIN = 38;
 
-
+// Global execution environment
 LCDDisplay* lcd_display;
 Numpad* numpad;
 ReversedCharset* rCharset;
+BackgroundMusicPlayer* musicPlayer;
 
 bool displayImage(const char* filename) {
   // Arduino library designers do not know const correctness :-(
@@ -54,11 +53,51 @@ bool displayImage(const __FlashStringHelper* str) {
   return displayImage(s.c_str());
 }
 
+/////////////////////////// "PROGRAMS" //////////////////////////////
+
+class Program {
+  private:
+  public:
+    virtual void switchedTo() {}
+    virtual Program* run() = 0;
+};
+
+// Default fallback program
+class OS : public Program {
+  public:
+    virtual void switchedTo() {
+      musicPlayer->stop();
+      tone(DIGITAL_SOUND_PIN, 100, 100);
+      
+      lcd_display->cls();
+      
+      rCharset->displayString(0, 10, "NUMPAD OS v1.0", true);
+      lcd_display->fillRow(LCDDisplay::ROW_COUNT - 1 - 1, 0, 128, 0x80);
+      
+      rCharset->displayString(2, 5, "Press # to return to this menu", true);
+      rCharset->displayString(3, 5, "at any time.", true);
+      rCharset->displayString(5, 5, "(1) Slide show.", true);
+    }
+  
+    virtual Program* run() {
+      return this;
+    }
+};
+
+
+Program* currentProgram;
+OS* osProgram;
+
 void setup() {
   lcd_display = new LCDDisplay;
+  lcd_display->cls();
+  lcd_display->activateDisplay(true);
+
   rCharset = new ReversedCharset(lcd_display);
   
-  lcd_display->activateDisplay(false);
+  numpad = new Numpad(NUMPAD_START_PIN);
+
+  musicPlayer = BackgroundMusicPlayer::instance(DIGITAL_SOUND_PIN);
 
   // Debug output initialization
   Serial.begin(9600);
@@ -66,27 +105,29 @@ void setup() {
   // SD card initialization
   SD.begin(SPI_PIN);
   
-  numpad = new Numpad(NUMPAD_START_PIN);
-  
-  lcd_display->cls();
-  lcd_display->activateDisplay(true);
-  
   //displayImage(F("images/img_1.bim"));
-  rCharset->displayString(0, 1, "0123456789!\"\\/'#*", true);
-  rCharset->displayString(1, 1, "Das sieht aber super aus.", true);
-  rCharset->displayString(2, 1, "Ganz viel Platz", true);
-  rCharset->displayString(3, 1, "fuer Nachrichten", true);
-  rCharset->displayString(4, 1, "fuer Mr X... ", true);
-  rCharset->displayString(5, 1, "Super gemacht!! ", true);
-  rCharset->displayString(7, 1, ":-x :) Thumbs up!", true);
+  //BackgroundMusicPlayer::instance(DIGITAL_SOUND_PIN)->playSingleToneMusic(F("music/bsno1.nsq"));
   
-  BackgroundMusicPlayer::instance(DIGITAL_SOUND_PIN)->playSingleToneMusic(F("music/bsno1.nsq"));
+  osProgram = new OS();
+
+  currentProgram = osProgram;
+  currentProgram->switchedTo();
 }
 
 void loop() {
-  BackgroundMusicPlayer::instance(DIGITAL_SOUND_PIN)->updateBuffer();
-  if (numpad->isPressed('0')) {
-    noTone(DIGITAL_SOUND_PIN);
+  // Cooperative multitasking - currentProgram
+  Program* newProgram = currentProgram->run();
+  if ((newProgram == NULL) || (numpad->isPressed('#'))) {
+    newProgram = osProgram;
   }
-  delay(1);
+  
+  if (currentProgram != newProgram) {
+    currentProgram = newProgram;
+    currentProgram->switchedTo();
+  }
+  
+  // Regular updates...
+  BackgroundMusicPlayer::instance(DIGITAL_SOUND_PIN)->updateBuffer();
 }
+
+

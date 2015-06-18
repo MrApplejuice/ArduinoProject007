@@ -22,7 +22,7 @@ void BackgroundMusicPlayer :: fillBuffer() {
       sscanf(line, "%d,%d", &freq, &duration);
       
       samples[sampleCount].frequency = freq;
-      samples[sampleCount].duration = duration * 8;
+      samples[sampleCount].duration = duration * 8; // Magic number to map from MIDI ticks to ms
       
       sampleCount++;
     }
@@ -95,6 +95,22 @@ void BackgroundMusicPlayer :: playSingleToneMusic(const char* filename) {
 void BackgroundMusicPlayer :: playSingleToneMusic(const __FlashStringHelper* filename) {
   String fn(filename);
   playSingleToneMusic(fn.c_str());
+}
+
+void BackgroundMusicPlayer :: stop() {
+  preventPlaying = true;
+  
+  sampleCount = 0;
+  playbackCursor = 0;
+  openFile.close();
+  
+  noTone(pin);
+  
+  preventPlaying = false;
+}
+
+bool BackgroundMusicPlayer :: isPlaying() const {
+  return playbackCursor < sampleCount; // only works in cooperative mode :-(
 }
 
 BackgroundMusicPlayer* BackgroundMusicPlayer :: instance(int pin) {
