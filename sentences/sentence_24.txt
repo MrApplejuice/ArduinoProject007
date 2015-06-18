@@ -1,0 +1,1 @@
+Process each serie for the patient after the data has been send I think you miss this already. 
