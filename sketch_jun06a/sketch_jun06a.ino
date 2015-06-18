@@ -223,6 +223,10 @@ class SlideShow : public Program {
           nextRandomImageOrText();
           lastKeyPress = millis();
         }
+        if (numpad->isPressed('4')) {
+          showI(lastImageOrText);
+          lastKeyPress = millis();
+        }
       }
       
       if (millis() - lastImageOrTextTime > 60000) { // 1 min per image or text
@@ -242,10 +246,57 @@ class SlideShow : public Program {
     }
 };
 
+class SoundKeyboard : public Program {
+  public:
+    virtual void switchedTo() {
+      musicPlayer->stop();
+
+      lcd_display->cls();
+      
+      rCharset->displayString(0, 0, "SUPER AWESOME KEYBOARD", true);
+      lcd_display->fillRow(LCDDisplay::ROW_COUNT - 1 - 1, 0, 128, 0x80);
+      
+      rCharset->displayString(2, 5, "1 = A; 2 = A#, 3 = H, 4 = C", true);
+      rCharset->displayString(3, 5, "5 = C#; 6 = D; 7 = D#; 8 = E.", true);
+      rCharset->displayString(5, 5, "9 = F; * = F#; 0 = G", true);
+    }
+    
+    virtual Program* run() {
+      if (numpad->isPressed('1')) {
+        tone(DIGITAL_SOUND_PIN, 440);
+      } else if (numpad->isPressed('2')) {
+        tone(DIGITAL_SOUND_PIN, 466 );
+      } else if (numpad->isPressed('3')) {
+        tone(DIGITAL_SOUND_PIN, 493 );
+      } else if (numpad->isPressed('4')) {
+        tone(DIGITAL_SOUND_PIN, 523 );
+      } else if (numpad->isPressed('5')) {
+        tone(DIGITAL_SOUND_PIN, 554 );
+      } else if (numpad->isPressed('6')) {
+        tone(DIGITAL_SOUND_PIN, 587 );
+      } else if (numpad->isPressed('7')) {
+        tone(DIGITAL_SOUND_PIN, 622 );
+      } else if (numpad->isPressed('8')) {
+        tone(DIGITAL_SOUND_PIN, 659 );
+      } else if (numpad->isPressed('9')) {
+        tone(DIGITAL_SOUND_PIN, 698 );
+      } else if (numpad->isPressed('*')) {
+        tone(DIGITAL_SOUND_PIN, 739 );
+      } else if (numpad->isPressed('0')) {
+        tone(DIGITAL_SOUND_PIN, 783 );
+      } else {
+        noTone(DIGITAL_SOUND_PIN);
+      }
+      
+      return this;
+    }
+};
+
 // Default fallback program
 class OS : public Program {
   private:
     SlideShow* slideShow;
+    SoundKeyboard* keyboard;
   public:
     virtual void switchedTo() {
       musicPlayer->stop();
@@ -259,11 +310,15 @@ class OS : public Program {
       rCharset->displayString(2, 5, "Press # to return to this menu", true);
       rCharset->displayString(3, 5, "at any time.", true);
       rCharset->displayString(5, 5, "(1) Slide show.", true);
+      rCharset->displayString(6, 5, "(2) Keyboard.", true);
     }
   
     virtual Program* run() {
       if (numpad->isPressed('1')) {
         return slideShow;
+      }
+      if (numpad->isPressed('2')) {
+        return keyboard;
       }
       
       return this;
@@ -271,6 +326,7 @@ class OS : public Program {
     
     OS() {
       slideShow = new SlideShow();
+      keyboard = new SoundKeyboard();
     }
 };
 
