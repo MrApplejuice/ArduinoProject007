@@ -29,14 +29,31 @@ void BackgroundMusicPlayer :: fillBuffer() {
   }
   preventPlaying = false;
 }
-    
+
+bool overrunLessThanEquals(unsigned int a, unsigned int b) {
+  // Tests a <= b, assuming that b might have overrun 0xFFFFFFFF by a small margin
+  if (a > b) {
+    if ((b - a) < ((b + 0x7FFFFFFF) - a)) {
+      // b did not overflow
+      return a <= b;
+    } else {
+      // b did overflow, a did not (assumption), therefore a < b
+      return true;
+    }
+  } else {
+    // always true, if assuming that a cannot overflow
+    return true; 
+  }
+}
+
 void BackgroundMusicPlayer :: internalIC() {
-  if (millis() >= nextAction) {
+  const unsigned long now = millis();
+  if (overrunLessThanEquals(nextAction, now)) {
     if (playbackCursor < sampleCount) {
       tone(pin, samples[playbackCursor].frequency, samples[playbackCursor].duration);
       noteCounter++;
       
-      nextAction = millis() + static_cast<unsigned long>(samples[playbackCursor].duration);
+      nextAction = now + static_cast<unsigned long>(samples[playbackCursor].duration);
       playbackCursor++;
     }
   }
@@ -83,7 +100,6 @@ void BackgroundMusicPlayer :: playSingleToneMusic(const char* filename) {
     } else {
       lineReader = StreamLineReader(openFile);
       fillBuffer();      
-      Serial.println(sampleCount);
     }
   }
 
