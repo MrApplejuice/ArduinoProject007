@@ -73,7 +73,7 @@ class SlideShow : public Program {
   private:
     unsigned int lastKeyPress;
     
-    unsigned long lastImageOrTextTime;
+    unsigned long lastImageOrTextTime, lastMusicEndTime;
     
     int imageFiles;
     int textFiles;
@@ -125,6 +125,19 @@ class SlideShow : public Program {
         d.close();
       }
       return String();
+    }
+    
+    void playRandomMusic() {
+      int i = random(musicFiles);
+      String filename = getNthFileName(String(F("/music")), i);
+
+      Serial.print(F("Playing music number "));
+      Serial.print(i);
+      Serial.print(F(": "));
+      Serial.println(filename);
+
+      musicPlayer->playSingleToneMusic(filename.c_str());
+      lastMusicEndTime = millis();
     }
     
     void showText(int i) {
@@ -199,6 +212,8 @@ class SlideShow : public Program {
       currentImageOrText = random(imageFiles + textFiles);
       lastImageOrText = currentImageOrText;
       showI(currentImageOrText);
+      
+      playRandomMusic();
     }
 
     virtual Program* run() {
@@ -215,6 +230,12 @@ class SlideShow : public Program {
         Serial.print(millis());
         Serial.print("  ");
         Serial.println(lastImageOrTextTime);
+      }
+      
+      if (musicPlayer->isPlaying()) {
+        lastMusicEndTime = millis();
+      } else if (millis() - lastMusicEndTime > 15000) { // 15 sec max between the start of last note of the last song and the start of the first note of the next song
+        playRandomMusic();
       }
       
       return this;
