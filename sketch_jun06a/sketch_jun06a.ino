@@ -11,6 +11,8 @@
 #include "Numpad.h"
 #include "ReversedCharset.h"
 
+const PROGMEM int KEY_REPEAT_DURATION = 500; // ms - time within which no new key presses should be processed after initial stroke detection - repeat limiter and stroke noise removal
+
 const PROGMEM uint8_t DIGITAL_SOUND_PIN = 2;
 const PROGMEM uint8_t SPI_PIN = 4; // Required for sd card connection!!!
 const PROGMEM uint8_t NUMPAD_START_PIN = 38;
@@ -27,18 +29,23 @@ bool displayImage(const char* filename) {
   strncpy(localFilename, filename, 63);
 
   if (!SD.exists(localFilename)) {
+    Serial.println(F("Image file does not exist"));
     return false;
   }
 
   uint8_t rowData[LCDDisplay::DISPLAY_WIDTH];
 
   File file = SD.open(filename);
-  if (file) {
+  if (!file) {
+    Serial.println(F("Could not open file"));
+    return false;
+  } else {
     for (int row = 0; row < LCDDisplay::ROW_COUNT; row++) {
       const int bytesRead = file.readBytes(rowData, LCDDisplay::DISPLAY_WIDTH);
       if (bytesRead < LCDDisplay::DISPLAY_WIDTH) {
         Serial.println(F("Unexpected end of (image) file"));
-        break;
+        file.close();
+        return false;
       }
       lcd_display->writeRow(row, 0, LCDDisplay::DISPLAY_WIDTH, rowData);
     }
@@ -62,13 +69,144 @@ class Program {
     virtual Program* run() = 0;
 };
 
+class SlideShow : public Program {
+  private:
+    unsigned int lastKeyPress;
+    
+    unsigned int lastImageOrTextTime;
+    
+    int imageFiles;
+    int textFiles;
+    int musicFiles;
+    
+    int lastImageOrText, currentImageOrText;
+    
+    int countFiles(String dir) {
+      File d = SD.open(dir);
+      int result = 0;
+      
+      if (d) {
+        File file = d.openNextFile();
+        while (file) {
+          if (!file.isDirectory()) {
+            result++;
+          }
+          file.close();
+          file = d.openNextFile();
+        }
+        d.rewindDirectory();
+        d.close();
+      }
+      return result;
+    }
+    
+    String getNthFileName(String dir, int n) {
+      File d = SD.open(dir);
+      
+      if (d) {
+        File file = d.openNextFile();
+        while (file) {
+          String name = file.name();
+          bool isDir = file.isDirectory();
+          file.close();
+          
+          if (!isDir) {
+            if (n == 0) {
+              d.rewindDirectory();
+              d.close();
+              return dir + String(F("/")) + name;
+            }
+            
+            n--;
+          }
+          file = d.openNextFile();
+        }
+        d.rewindDirectory();
+        d.close();
+      }
+      return String();
+    }
+    
+    void showText(int i) {
+    }
+    
+    void showImage(int i) {
+      String filename = getNthFileName(String(F("/images")), i);
+      Serial.print(F("Showing image number "));
+      Serial.print(i);
+      Serial.print(F(": "));
+      Serial.println(filename);
+      
+      bool succeeded = displayImage(filename.c_str());
+      if (!succeeded) {
+        Serial.println("Display of image failed!");
+      }
+    }
+    
+    void showI(int i) {
+      lastImageOrText = currentImageOrText;
+      currentImageOrText = i;
+      
+      if (i >= imageFiles) {
+        showText(i - imageFiles);
+      } else {
+        showImage(i);
+      }
+      
+      lastImageOrTextTime = millis();
+    }
+    
+    void nextRandomImageOrText() {
+      int next = currentImageOrText;
+      while (next == currentImageOrText) {
+        next = random(imageFiles + textFiles);
+      }
+      showI(next);
+    }
+  public:
+    virtual void switchedTo() {
+      randomSeed(millis());
+      
+      lastKeyPress = millis();
+      
+      Serial.println("Counting images");
+      imageFiles = countFiles(String(F("/images")));
+      Serial.println("Counting texts");
+      textFiles = countFiles(String(F("/texts")));
+      Serial.println("Counting music");
+      musicFiles = countFiles(String(F("/music")));
+      
+      currentImageOrText = random(imageFiles + textFiles);
+      lastImageOrText = currentImageOrText;
+      showI(currentImageOrText);
+    }
+
+    virtual Program* run() {
+      if (millis() - lastKeyPress > KEY_REPEAT_DURATION) {
+        // New key presses are allowed now
+        if (numpad->isPressed('6')) {
+          nextRandomImageOrText();
+          lastKeyPress = millis();
+        }
+      }
+      
+      if (millis() - lastImageOrTextTime > 60000) { // 1 min per image or text
+        nextRandomImageOrText();
+      }
+      
+      return this;
+    }
+};
+
 // Default fallback program
 class OS : public Program {
+  private:
+    SlideShow* slideShow;
   public:
     virtual void switchedTo() {
       musicPlayer->stop();
       tone(DIGITAL_SOUND_PIN, 100, 100);
-      
+
       lcd_display->cls();
       
       rCharset->displayString(0, 10, "NUMPAD OS v1.0", true);
@@ -80,10 +218,17 @@ class OS : public Program {
     }
   
     virtual Program* run() {
+      if (numpad->isPressed('1')) {
+        return slideShow;
+      }
+      
       return this;
     }
+    
+    OS() {
+      slideShow = new SlideShow();
+    }
 };
-
 
 Program* currentProgram;
 OS* osProgram;
@@ -104,9 +249,6 @@ void setup() {
 
   // SD card initialization
   SD.begin(SPI_PIN);
-  
-  //displayImage(F("images/img_1.bim"));
-  //BackgroundMusicPlayer::instance(DIGITAL_SOUND_PIN)->playSingleToneMusic(F("music/bsno1.nsq"));
   
   osProgram = new OS();
 
